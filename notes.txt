@@ -1,0 +1,214 @@
+*** Feature Branch ***
+
+- Create a new directory and open with VScode
+- Run command 'pnpm create next-app@latest ./ --typescript --tailwind --eslint' in the terminal
+- For creating trpc server run command 'pnpm add @trpc/server' in the terminal
+- To enable our application make requests to our trpc server via trpc client, run command 'pnpm add @trpc/client @trpc/react-query @tanstack/react-query' in the terminal
+- Create a 'trpc.ts' file inside 'src/server' directory and add initialize trpc server like so:
+
+```js
+import {initTRPC} from "@trpc/server"
+
+export const {router, procedure} = initTRPC.create()
+```
+
+- Create an 'index.ts' file inside 'src/server' directory, import and create an instace of the initialised 'router' , pass a config object as argument to the 'router' and create procedures inside the config object like so:
+
+```js
+import { router, procedure } from "./trpc";
+
+export const appRouter = router({
+    getTasks: procedure.query(() => {
+        return ["Pray", "Stetch", "Freshen up", "Eat", "Code", "Sleep", "Play"]
+    })
+})
+
+export type AppRouter = typeof appRouter
+```
+
+- Connect the tRPC router to NextJS app router by creating a route inside the app directory ('src/app/api/trpc/[trpc]/route.ts' file) which will route every request from our application to tRPC router. Add this code:
+
+```js
+import {fetchRequestHandler} from "@trpc/server/adapters/fetch"
+import { appRouter } from "@/server"
+
+
+const handler = (req: Request) => {
+ return  fetchRequestHandler({
+    endpoint: "/api/trpc",
+    router: appRouter,
+    req,
+    createContext: () => ({})
+  })
+}
+
+export {handler as GET, handler as POST}
+```
+
+We can now send a GET request to our tRPC endpoint '/api/trpc/getTasks'
+
+*** Sending http request from client components using react-query ***
+
+- Create trpc client in 'src/app/_trpcClient/client.ts' file and add this code:
+
+```js
+import {createTRPCReact} from "@trpc/react-query"
+import type { AppRouter } from "@/server"
+
+export const tRPC = createTRPCReact<AppRouter>({})
+```
+- Create a provider component for react-query in 'src/trpcClient/Provider.tsx' file like so:
+
+```js
+"use client"
+import React, {useState} from 'react'
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query" 
+import { httpBatchLink } from '@trpc/client'
+import { tRPC } from './client'
+
+
+function Provider({children}: {children: React.ReactNode}) {
+  const [queryClient] = useState(() => new QueryClient({}))
+  const [trpcClient] = useState(() => tRPC.createClient({
+    links: [
+        httpBatchLink({url: "http://localhost:3000/api/trpc"})
+    ]
+  }))
+
+  return (
+    <tRPC.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        {children}
+      </QueryClientProvider>
+    </tRPC.Provider>
+  )
+}
+
+export default Provider
+```
+- Create a client component, import tRPC client and call tRPC server endpoint like so:
+
+```js
+"use client"
+import { tRPC } from '@/trpcClient/client'
+
+
+function TaskList() {
+
+  const {data} = tRPC.getTasks.useQuery()
+  
+  return (
+    <div>
+      {data?.map((task) => (
+        <p className='my-2'>
+          {task.content} - <small className='text-slate-500'>{task.isDone ? "Done" : "Pending"}</small>
+        </p>
+      ))}
+    </div>
+  )
+}
+
+export default TaskList
+```
+
+*** Connecting to database with drizzle and postgreSQL ***
+- Install 'dotenv', 'pg', '@types/pg', 'drizzle-kit', 'drizzle-orm', 'esbuild-register' 
+- Set 'compilerOptions.target=ES6' inside 'tsconfig.json' file
+- Create 'schema.ts', 'migrate.ts', 'dbClient.ts' files inside 'src/db' directory and 'drizzle.config.ts' file inside root directory.
+
+> 'schema.ts' file:
+```js
+import {  pgTable, serial, text, boolean} from 'drizzle-orm/pg-core';
+ 
+ 
+export const task = pgTable('task', {
+  id: serial('id').primaryKey(),
+  content: text('content'),
+  isDone: boolean("status").default(false),
+});
+```
+
+> 'migrate.ts' file:
+```js
+import { drizzle } from "drizzle-orm/node-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { Pool } from "pg";
+import "dotenv/config"
+
+
+let pool;
+
+if(!pool){
+    pool = new Pool({
+        connectionString: process.env.DB_URL
+    })
+} 
+
+const db = drizzle(pool)
+
+async function main() {
+    console.log("migration started...")
+    await migrate(db, {migrationsFolder: "drizzle"})
+    console.log("migration done")
+    process.exit(0)
+}
+
+main()
+.catch((error) => {
+    console.log(error.message)
+    process.exit(0)
+})
+```
+
+> 'drizzle.config.ts' file:
+```js
+import type { Config } from "drizzle-kit";
+import "dotenv/config"
+
+
+export default {
+  schema: "./schema.ts",
+  driver: 'pg',
+  out: "drizzle",
+  dbCredentials: {
+    connectionString: process.env.DB_URL!
+  }
+} satisfies Config;
+```
+
+> 'dbClient.ts' file:
+```js
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+import "dotenv/config"
+
+ 
+const pool = new Pool({
+  connectionString: process.env.DB_URL,
+  ssl: false
+});
+ 
+export const db = drizzle(pool);
+```
+
+- To generate migration file, add script ' "migration:generate": "drizzle-kit generate:pg --schema=./src/db/schema.ts" ' to the package.json file (This will create a 'drizzle' directory that keeps track of all migrations inside the root directory')
+- To push migrations to database, add script ' "node -r esbuild-register src/db/migrate.ts" ' to the package.json file
+- Import the 'db' instance and 'task' schema into 'src/tRPCServer/index.ts' file and make databse requests like so:
+
+```js
+import { db } from "@/db/dbClient";
+import { router, procedure } from "./trpc";
+import { task } from "@/db/schema";
+
+
+export const appRouter = router({
+    getTasks: procedure.query(async () => {
+        const result = await db.select().from(task)
+        return result
+    })
+})
+
+export type AppRouter = typeof appRouter
+```
+
+- To view and interract with databasein studio mode, start the application dev server, open another terminal and run command 'pnpm drizzle-studio'
