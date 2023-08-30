@@ -100,7 +100,7 @@ function TaskList() {
   return (
     <div>
       {data?.map((task) => (
-        <p className='my-2'>
+        <p key={task.id} className='my-2'>
           {task.content} - <small className='text-slate-500'>{task.isDone ? "Done" : "Pending"}</small>
         </p>
       ))}
@@ -212,3 +212,5 @@ export type AppRouter = typeof appRouter
 ```
 
 - To view and interract with databasein studio mode, start the application dev server, open another terminal and run command 'pnpm drizzle-studio'
+
+*** Server Side Rendering ***
