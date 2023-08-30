@@ -7,8 +7,8 @@ function TaskListClient() {
   const {data} = tRPC.getTasks.useQuery()
   
   return (
-    <div>
-      <h4 className='py-1 px-4 bg-slate-600 rounded-full mb-6'>Client Component</h4>
+    <div className='w-[300px]'>
+      <h4 className='py-1 px-4 bg-slate-600 rounded-full mb-6 text-center'>Client Component</h4>
       {data?.map((task) => (
         <p key={task.id} className='my-2'>
           {task.content} - <small className='text-slate-500'>{task.isDone ? "Done" : "Pending"}</small>
