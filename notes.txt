@@ -1,4 +1,4 @@
-*** Feature Branch ***
+*** Task Application Branch ***
 
 - Create a new directory and open with VScode
 - Run command 'pnpm create next-app@latest ./ --typescript --tailwind --eslint' in the terminal
