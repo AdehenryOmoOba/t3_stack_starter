@@ -19,6 +19,11 @@ export const appRouter = router({
     setIsDone: procedure.input(z.object({id: z.number(), isDone: z.boolean()})).mutation(async ({input}) => {
         await db.update(task).set({isDone: !input.isDone}).where(eq(task.id, input.id))
         return true
+    }),
+
+    deleteTask: procedure.input(z.number()).mutation(async ({input}) => {
+        await db.delete(task).where(eq(task.id, input))
+        return true
     })
 })
 

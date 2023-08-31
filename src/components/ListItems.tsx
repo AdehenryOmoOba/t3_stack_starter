@@ -1,10 +1,15 @@
 "use client"
 import { useRouter } from 'next/navigation'
 import { tRPC } from "@/trpc/client/trpc"
+import deleteBtn from "@/public/assets/delete-svgrepo-com.svg"
+import Image from 'next/image'
 
 function ListItems({task}: {task: {id: number, content: string, isDone: boolean}}) {
   const router = useRouter()
   const {mutate: setIsDone} = tRPC.setIsDone.useMutation({
+    onSettled: () => router.refresh()
+  })
+  const {mutate: deleteTask} = tRPC.deleteTask.useMutation({
     onSettled: () => router.refresh()
   })
   
@@ -14,7 +19,12 @@ function ListItems({task}: {task: {id: number, content: string, isDone: boolean}
         <label htmlFor={`${task.id}`} onClick={() => setIsDone({id: task.id, isDone: task.isDone})} className='my-2 cursor-pointer'>
           {task.content}
         </label>
-        <small className='text-slate-500 w-14'>{task.isDone ? "Done" : "Pending"}</small>
+        <div className='flex gap-x-2 items-center'>
+          <small className='text-slate-500 w-14'>{task.isDone ? "Done" : "Pending"}</small>
+          <button onClick={() => deleteTask(task.id)}>
+            <Image src={deleteBtn} alt='delete button' />
+          </button>
+        </div>
       </div>
     )
 }
