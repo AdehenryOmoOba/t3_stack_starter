@@ -1,7 +1,8 @@
-import './globals.css'
+import '../../app/globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import Provider from '@/trpc/client/Provider'
+import TrpcProvider from '@/trpc/client/TrpcProvider'
+import NextAuthSessionProvider from '@/nextauth/NextAuthSessionProvider'
 
 
 const inter = Inter({ subsets: ['latin'] })
@@ -15,9 +16,11 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
   
   return (
     <html lang="en">
-      <Provider>
-        <body className={`${inter.className} bg-slate-950 text-slate-50`}>{children}</body>
-      </Provider>
+      <NextAuthSessionProvider>
+        <TrpcProvider>
+          <body className={`${inter.className} bg-slate-950 text-slate-50`}>{children}</body>
+        </TrpcProvider>
+      </NextAuthSessionProvider>
     </html>
   )
 }

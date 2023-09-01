@@ -13,7 +13,7 @@ export const authOptions: NextAuthOptions = {
           password: {},
       },
       async authorize(credentials) {
-      if(credentials?.email === "ade") {
+      if(credentials?.email === "adehenry") {
         return  {id: "1", email: credentials.email, image: "ade.png"}
       }
         return null
